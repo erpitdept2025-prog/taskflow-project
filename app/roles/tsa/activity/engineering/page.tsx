@@ -86,6 +86,7 @@ function EngineeringPortalContent() {
           */}
           <iframe
             src={`https://conx.mtechsolutions.cloud/dashboard?userId=${userId}`}
+            allow="geolocation; notifications"
             className="w-full h-full border-none shadow-inner"
             title="Engiconnect Portal"
             onLoad={() => setPortalLoading(false)}
