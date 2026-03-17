@@ -582,6 +582,7 @@ export default function TaskListEditDialog({
       return {
         itemNo: index + 1,
         qty,
+        unit: p.product_unit || "pcs",
         photo: p.product_photo ?? "",
         title: p.product_title ?? "",
         sku: p.product_sku ?? "",
@@ -1054,7 +1055,7 @@ export default function TaskListEditDialog({
       currentY += clientBlock.h;
 
       const headerBlock = await renderBlock(
-        `<div class="content-area"><div class="table-container" style="border-bottom:1.5px solid black;"><table class="main-table"><thead><tr><th style="width:35px;text-align:center;">NO</th><th style="width:35px;text-align:center;">QTY</th><th style="width:105px;text-align:center;">REF. PHOTO</th><th style="text-align:left;">PRODUCT DESCRIPTION</th><th style="width:90px;text-align:right;">UNIT PRICE</th><th style="width:90px;text-align:right;">TOTAL AMOUNT</th></tr></thead></table></div></div>`,
+        `<div class="content-area"><div class="table-container" style="border-bottom:1.5px solid black;"><table class="main-table"><thead><tr><th style="width:35px;text-align:center;">NO</th><th style="width:45px;text-align:center;">QTY</th><th style="width:35px;text-align:center;">UNIT</th><th style="width:105px;text-align:center;">REF. PHOTO</th><th style="text-align:left;">PRODUCT DESCRIPTION</th><th style="width:90px;text-align:right;">UNIT PRICE</th><th style="width:90px;text-align:right;">TOTAL AMOUNT</th></tr></thead></table></div></div>`,
       );
       pdf.addImage(
         headerBlock.img,
@@ -1067,8 +1068,8 @@ export default function TaskListEditDialog({
       currentY += 28;
 
       for (const [index, item] of payload.items.entries()) {
-        const rowBlock = await renderBlock(
-          `<div class="content-area"><table class="main-table" style="border:1.5px solid black;border-top:none;"><tr><td style="width:35px;" class="item-no">${index + 1}</td><td style="width:35px;" class="qty-col">${item.qty}</td><td style="width:105px;padding:8px;text-align:center;vertical-align:middle;"><img src="${item.photo}" style="mix-blend-mode:multiply;width:82px;height:82px;object-fit:contain;display:block;margin:0 auto;"></td><td style="padding:8px 10px;"><p class="product-title">${item.title}</p>${item.sku ? `<p class="sku-text">ITEM CODE: ${item.sku}</p>` : ""}<div class="desc-text">${item.product_description}</div>${item.remarks ? `<div class="desc-remarks">${item.remarks}</div>` : ""}</td><td style="width:90px;" class="price-col">₱${item.unitPrice.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td style="width:90px;" class="total-col">₱${item.totalAmount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table></div>`,
+       const rowBlock = await renderBlock(
+        `<div class="content-area"><table class="main-table" style="border:1.5px solid black;border-top:none;"><tr><td style="width:35px;" class="item-no">${index + 1}</td><td style="width:35px;" class="qty-col">${item.qty}</td><td style="width:50px;text-align:center;vertical-align:middle;font-size:8px;font-weight:700;color:#6b7280;padding:4px;">${item.unit || "pcs"}</td><td style="width:105px;padding:8px;text-align:center;vertical-align:middle;"><img src="${item.photo}" style="mix-blend-mode:multiply;width:82px;height:82px;object-fit:contain;display:block;margin:0 auto;"></td><td style="padding:8px 10px;"><p class="product-title">${item.title}</p>${item.sku ? `<p class="sku-text">ITEM CODE: ${item.sku}</p>` : ""}<div class="desc-text">${item.product_description}</div>${item.remarks ? `<div class="desc-remarks">${item.remarks}</div>` : ""}</td><td style="width:90px;" class="price-col">₱${item.unitPrice.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td><td style="width:90px;" class="total-col">₱${item.totalAmount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td></tr></table></div>`,
         );
         if (currentY + rowBlock.h > pdfHeight - 50) {
           pdf.addPage([612, 936]);
