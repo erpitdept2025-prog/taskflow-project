@@ -320,7 +320,7 @@
     const filteredFavorites = React.useMemo(() => {
       const role = userDetails.Role;
 
-      if (role === "Territory Sales Manager") {
+      if (role === "Territory Sales Manager" || "PROJECT SALES SPECIALIST") {
         return data.favorites.filter(
           (fav) =>
             fav.name === "Team Sales Performance" ||
