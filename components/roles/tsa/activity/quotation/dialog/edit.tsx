@@ -921,7 +921,7 @@ export default function TaskListEditDialog({
             /* PRODUCT TABLE */
             .table-container { border: 1.5px solid black; border-bottom: none; background: white; margin: 0; }
             .main-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
-            .main-table th { padding: 6px 8px; font-size: 8.5px; font-weight: 900; color: white; background: ${PRIMARY_CHARCOAL}; text-transform: uppercase; border-right: 1px solid #374151; letter-spacing: 0.04em; }
+            .main-table th { padding: 6px 8px; font-size: 8.5px; font-weight: 900; color: black; background: #e5e7eb; text-transform: uppercase; border-right: 1px solid #374151; border-bottom: 1px solid #374151; letter-spacing: 0.04em; }
             .main-table th:last-child { border-right: none; }
             .main-table td { padding: 8px; vertical-align: top; border-right: 1px solid #d1d5db; border-bottom: 1px solid #d1d5db; font-size: 9px; }
             .main-table td:last-child { border-right: none; }
@@ -974,9 +974,9 @@ export default function TaskListEditDialog({
             .sum-gray-val { text-align: right; font-weight: 600; color: #9ca3af; font-size: 8px; padding: 3px 10px; white-space: nowrap; }
             .sum-ewt-lbl { text-align: right; font-weight: 900; text-transform: uppercase; font-size: 7px; border-right: 2px solid black; color: #1d4ed8; background: #eff6ff; padding: 4px 10px; white-space: nowrap; }
             .sum-ewt-val { text-align: right; font-weight: 900; color: #1d4ed8; background: #eff6ff; font-size: 8.5px; padding: 4px 10px; white-space: nowrap; }
-            .sum-final-row { background: ${PRIMARY_CHARCOAL}; }
-            .sum-final-lbl { text-align: right; font-weight: 900; text-transform: uppercase; font-size: 8.5px; border-right: 1px solid #374151; color: white; padding: 7px 10px; white-space: nowrap; }
-            .sum-final-val { text-align: right; font-weight: 900; font-size: 14px; color: white; padding: 7px 10px; white-space: nowrap; }
+            .sum-final-row { background: #e5e7eb;}
+            .sum-final-lbl { text-align: right; font-weight: 900; text-transform: uppercase; font-size: 8.5px; border-right: 1px solid #374151; color: black; padding: 7px 10px; white-space: nowrap; }
+            .sum-final-val { text-align: right; font-weight: 900; font-size: 14px; color: black; padding: 7px 10px; white-space: nowrap; }
             /* SIGNATURE */
             .sig-hierarchy { margin-top: 14px; padding-top: 12px; border-top: 3px solid #1d4ed8; padding-bottom: 16px; }
             .sig-message { font-size: 8.5px; margin-bottom: 18px; font-weight: 400; line-height: 1.5; color: #374151; }
