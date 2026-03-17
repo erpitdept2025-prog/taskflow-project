@@ -65,8 +65,12 @@ interface Activity {
     product_photo?: string;
     product_sku?: string;
     product_title?: string;
+    product_unit?: string;
     vat_type: string;
     delivery_fee: string;
+    restocking_fee?: string;
+    wht_type?: string;
+    quotation_subject?: string;
     item_remarks?: string;
 
     project_type?: string;
@@ -201,8 +205,11 @@ export function CreateActivityDialog({
     const [productPhoto, setProductPhoto] = useState("");
     const [productSku, setProductSku] = useState("");
     const [productTitle, setProductTitle] = useState("");
+    const [productUnit, setProductUnit] = useState("");
     const [vatType, setVatType] = useState("");
     const [deliveryFee, setDeliveryFee] = useState("");
+    const [restockingFee, setRestockingFee] = useState("");
+    const [whtType, setWhtType] = useState("none");
     const [itemRemarks, setItemRemarks] = useState("");
 
     const [projectType, setProjectType] = useState("");
@@ -237,6 +244,7 @@ export function CreateActivityDialog({
     const [selectedContactNumber, setSelectedContactNumber] = useState(contact_number);
     const [showContactDialog, setShowContactDialog] = useState(false); // <-- dito
 
+    const [quotationSubject, setQuotationSubject] = useState("For Quotation");
 
     // AUTO SET DATE CREATED
     useEffect(() => {
@@ -257,6 +265,7 @@ export function CreateActivityDialog({
         productPhoto: "",
         productSku: "",
         productTitle: "",
+        productUnit: "",
         projectType: "",
         projectName: "",
         quotationNumber: "",
@@ -288,6 +297,7 @@ export function CreateActivityDialog({
         setProductPhoto(initialState.productPhoto);
         setProductSku(initialState.productSku);
         setProductTitle(initialState.productTitle);
+        setProductUnit(initialState.productUnit);
         setItemRemarks(initialState.itemRemarks);
         setProjectType(initialState.projectType);
         setProjectName(initialState.projectName);
@@ -467,8 +477,12 @@ export function CreateActivityDialog({
             product_photo: productPhoto || undefined,
             product_sku: productSku || undefined,
             product_title: productTitle || undefined,
+            product_unit: productUnit || undefined,
             vat_type: vatType,
             delivery_fee: deliveryFee,
+            restocking_fee: restockingFee,
+            wht_type: whtType,
+            quotation_subject: quotationSubject,
             item_remarks: itemRemarks || undefined,
 
             project_type: projectType || undefined,
@@ -975,6 +989,8 @@ export function CreateActivityDialog({
                                     setProductSku={setProductSku}
                                     productTitle={productTitle}
                                     setProductTitle={setProductTitle}
+                                    productUnit={productUnit}
+                                    setProductUnit={setProductUnit}
                                     projectType={projectType}
                                     setProjectType={setProjectType}
                                     projectName={projectName}
@@ -995,16 +1011,14 @@ export function CreateActivityDialog({
                                     setRemarks={setRemarks}
                                     status={status}
                                     setStatus={setStatus}
-
-                                    // Pass vatType here
                                     vatType={vatType}
                                     setVatType={setVatType}
-
                                     deliveryFee={deliveryFee}
                                     setDeliveryFee={setDeliveryFee}
+                                    restockingFee={restockingFee}
+                                    setRestockingFee={setRestockingFee}
                                     itemRemarks={itemRemarks}
                                     setItemRemarks={setItemRemarks}
-
                                     typeClient={typeClient}
                                     setTypeClient={setTypeClient}
                                     tsm={tsm}
@@ -1028,6 +1042,11 @@ export function CreateActivityDialog({
                                     managerDetails={managerDetails ?? null}
                                     tsmDetails={tsmDetails ?? null}
                                     signature={signature}
+                                    whtType={whtType}
+                                    setWhtType={setWhtType}
+
+                                    quotationSubject={quotationSubject}
+                                    setQuotationSubject={setQuotationSubject}
                                 />
                             )}
 

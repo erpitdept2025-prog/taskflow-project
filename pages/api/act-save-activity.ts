@@ -42,6 +42,7 @@ export default async function handler(
       product_sku,
       product_title,
       item_remarks,
+      product_unit,
 
       project_type,
       project_name,
@@ -66,6 +67,9 @@ export default async function handler(
       tsm_approved_status,
       vat_type,
       delivery_fee,
+      restocking_fee,
+      wht_type,
+      quotation_subject,
 
       // Signatories
       contact,
@@ -108,6 +112,7 @@ export default async function handler(
       product_sku,
       product_title,
       item_remarks,
+      product_unit,
     };
 
     for (const [key, value] of Object.entries(productFields)) {
@@ -122,21 +127,16 @@ export default async function handler(
       product_category &&
       product_quantity &&
       product_amount &&
-      product_description &&
-      product_photo &&
-      product_sku &&
-      product_title &&
-      item_remarks
+      product_title
     ) {
+      // Only validate core fields that use comma separator
+      // product_description uses "||" separator and may be empty for SPF products
+      // item_remarks is optional and may be empty
       const lengths = new Set([
         product_category.split(",").length,
         product_quantity.split(",").length,
         product_amount.split(",").length,
-        product_description.split("||").length,
-        product_photo.split(",").length,
-        product_sku.split(",").length,
         product_title.split(",").length,
-        item_remarks.split(",").length,
       ]);
 
       if (lengths.size !== 1) {
@@ -181,6 +181,7 @@ export default async function handler(
         product_sku: safe(product_sku),
         product_title: safe(product_title),
         item_remarks: safe(item_remarks),
+        product_unit: safe(product_unit),
 
         project_type: safe(project_type),
         project_name: safe(project_name),
@@ -206,6 +207,9 @@ export default async function handler(
         tsm_approved_status: safe(tsm_approved_status),
         vat_type: safe(vat_type),
         delivery_fee: safe(delivery_fee),
+        restocking_fee: safe(restocking_fee),
+        quotation_vatable: safe(wht_type),
+        quotation_subject: safe(quotation_subject),
       })
       .select();
 

@@ -75,7 +75,12 @@ export default async function handler(
     "start_date",
     "end_date",
     "vat_type",
-    "item_remarks"
+    "delivery_fee",
+    "restocking_fee",
+    "wht_type",
+    "quotation_subject",
+    "item_remarks",
+    "product_unit"
   ];
 
   // Filter out empty/null fields
@@ -170,6 +175,10 @@ export default async function handler(
       ...historyUpdateData,
       tsm_approved_status: "Pending",
       delivery_fee: body.delivery_fee ?? null,
+      restocking_fee: body.restocking_fee ?? null,
+      quotation_vatable: body.wht_type ?? null,
+      quotation_subject: body.quotation_subject ?? null,
+      product_unit: body.product_unit ?? null,
     })
     .eq("id", id);
 

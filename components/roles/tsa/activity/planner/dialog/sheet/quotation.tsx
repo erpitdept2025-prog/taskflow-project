@@ -32,6 +32,8 @@ interface Props {
   setSource: (v: string) => void;
   productCat: string; // JSON string of selected products with qty and price
   setProductCat: (v: string) => void;
+  productUnit: string;
+  setProductUnit: (v: string) => void;
   productQuantity: string;
   setProductQuantity: (v: string) => void;
   productAmount: string;
@@ -40,9 +42,9 @@ interface Props {
   setProductDescription: (v: string) => void;
   productPhoto: string;
   setProductPhoto: (v: string) => void;
-  productSku: string;           // comma separated SKUs (first SKU if multiple)
+  productSku: string; // comma separated SKUs
   setProductSku: (v: string) => void;
-  productTitle: string;         // comma separated titles
+  productTitle: string; // comma separated titles
   setProductTitle: (v: string) => void;
   projectType: string;
   setProjectType: (v: string) => void;
@@ -68,15 +70,27 @@ interface Props {
   setTSM: (v: string) => void;
   typeClient: string;
   setTypeClient: (value: string) => void;
-  vatType: string;
-  setDeliveryFee: (value: string) => void;
-  deliveryFee: string;
-  setItemRemarks: (value: string) => void;
-  itemRemarks: string;
+
+  // --- TAX & LOGISTICS UPDATED ---
+  vatType: string;         // e.g., "vat_inc", "vat_exe", "zero_rated"
   setVatType: (value: string) => void;
+  whtType: string;         // e.g., "none", "wht_1", "wht_2"
+  setWhtType: (value: string) => void;
+  deliveryFee: string;
+  setDeliveryFee: (value: string) => void;
+  restockingFee: string;
+  setRestockingFee: (value: string) => void;
+  itemRemarks: string;
+  setItemRemarks: (value: string) => void;
+  quotationSubject: string;
+  setQuotationSubject: (value: string) => void;
+
+  // --- ACTIONS ---
   handleBack: () => void;
   handleNext: () => void;
   handleSave: () => void;
+
+  // --- USER & CLIENT DATA ---
   firstname: string;
   lastname: string;
   email: string;
@@ -88,6 +102,8 @@ interface Props {
   contact_number: string;
   email_address: string;
   contact_person: string;
+
+  // --- SUPERVISOR & TRACEABILITY ---
   salesManagerContact?: string;
   salesManagerEmail?: string;
   managerDetails: SupervisorDetails | null;
@@ -125,6 +141,9 @@ interface SelectedProduct extends Product {
   price: number;
   discount: number;
   isDiscounted?: boolean;
+  cloudinaryPublicId?: string;
+  unit?: string;
+  isLineItem?: boolean;
 }
 
 function extractTsmPrefix(tsm: string): string {
@@ -148,6 +167,7 @@ export function QuotationSheet(props: Props) {
     step, setStep,
     source, setSource,
     productCat, setProductCat,
+    productUnit, setProductUnit,
     productQuantity, setProductQuantity,
     productAmount, setProductAmount,
     productDescription, setProductDescription,
@@ -160,29 +180,44 @@ export function QuotationSheet(props: Props) {
     quotationAmount, setQuotationAmount,
     quotationType, setQuotationType,
     quotationStatus, setQuotationStatus,
+
+    // --- TAX & FINANCIALS ---
     vatType, setVatType,
+    whtType, setWhtType,       // Added Withholding Tax State
+    deliveryFee, setDeliveryFee,
+    restockingFee, setRestockingFee,
+    itemRemarks, setItemRemarks,
+    quotationSubject, setQuotationSubject,
+
+    // --- CRM & STATUS ---
     callType, setCallType,
     followUpDate, setFollowUpDate,
     remarks, setRemarks,
     status, setStatus,
     tsm, setTSM,
     typeClient, setTypeClient,
-    deliveryFee, setDeliveryFee,
-    itemRemarks, setItemRemarks,
+
+    // --- ACTIONS ---
     handleBack,
     handleNext,
     handleSave,
+
+    // --- USER / REP DETAILS ---
     firstname,
     lastname,
     email,
     contact,
     tsmname,
     managername,
+
+    // --- CLIENT DETAILS ---
     company_name,
     address,
     contact_number,
     email_address,
     contact_person,
+
+    // --- SUPERVISOR & TRACEABILITY ---
     salesManagerContact,
     salesManagerEmail,
     managerDetails,
@@ -212,8 +247,34 @@ export function QuotationSheet(props: Props) {
     "shopify" | "firebase_shopify" | "firebase_taskflow"
   >("shopify");
   const [isPreviewOpen, setIsPreviewOpen] = useState<boolean>(false);
+  const [mobilePanelTab, setMobilePanelTab] = useState<"search" | "products">("search");
 
   const [expandedRows, setExpandedRows] = useState<{ [uid: string]: boolean }>({});
+  const [isSpfMode, setIsSpfMode] = useState(false);
+  const [spfUploading, setSpfUploading] = useState(false);
+  const [spfManualProduct, setSpfManualProduct] = useState({
+    title: "",
+    sku: "",
+    price: 0,
+    quantity: 1,
+    description: "",
+    imageUrl: "",
+    cloudinaryPublicId: "",
+  });
+
+  // Delete image from Cloudinary when product is removed
+  const deleteCloudinaryImage = async (publicId: string) => {
+    if (!publicId) return;
+    try {
+      await fetch("/api/cloudinary/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicId }),
+      });
+    } catch (err) {
+      console.error("Failed to delete Cloudinary image:", err);
+    }
+  };
 
   function addDaysToDate(days: number): string {
     const date = new Date();
@@ -322,12 +383,12 @@ export function QuotationSheet(props: Props) {
       return acc + totalAfterDiscount;
     }, 0);
 
-    // Add delivery fee (parse it to number safely)
     const deliveryFeeNumber = parseFloat(deliveryFee) || 0;
-    const totalWithDelivery = productTotal + deliveryFeeNumber;
+    const restockingFeeNumber = parseFloat(restockingFee) || 0;
+    const totalWithDelivery = productTotal + deliveryFeeNumber + restockingFeeNumber;
 
-    setQuotationAmount(totalWithDelivery.toFixed(2)); // keeps it as string
-  }, [selectedProducts, deliveryFee, discount]); // also watch deliveryFee and discount
+    setQuotationAmount(totalWithDelivery.toFixed(2));
+    }, [selectedProducts, deliveryFee, restockingFee, discount]);
 
   useEffect(() => {
     setLocalQuotationNumber(quotationNumber);
@@ -352,15 +413,17 @@ export function QuotationSheet(props: Props) {
     const skus = selectedProducts.map((p) => (p.skus && p.skus.length > 0 ? p.skus[0] : ""));
     const titles = selectedProducts.map((p) => p.title);
     const remarks = selectedProducts.map((p) => p.itemRemarks || "");
+    const units = selectedProducts.map((p) => p.unit || "pcs");
 
     setProductCat(ids.join(","));
     setProductQuantity(quantities.join(","));
     setProductAmount(amounts.join(","));
-    setProductDescription(descriptions.join(" || ")); // <-- buong description
+    setProductDescription(descriptions.join(" || "));
     setProductPhoto(photos.join(","));
     setProductSku(skus.join(","));
     setProductTitle(titles.join(","));
     setItemRemarks(remarks.join(","));
+    setProductUnit(units.join(","));
   }, [
     selectedProducts,
     setProductCat,
@@ -371,12 +434,13 @@ export function QuotationSheet(props: Props) {
     setProductSku,
     setProductTitle,
     setItemRemarks,
+    setProductUnit,
   ]);
 
   // Save handler with validation
   const saveWithSelectedProducts = () => {
     setShowQuotationAlert(true);  // Show the Shadcn alert
-    handleDownloadQuotationPDF(); // Generate PDF before saving
+    //handleDownloadQuotationPDF(); // Generate PDF before saving
     handleSave();
   };
 
@@ -505,15 +569,38 @@ export function QuotationSheet(props: Props) {
         telNo: safeContactNumber,
         email: safeEmailAddress,
         attention: safeContactPerson ? safeContactPerson : "",
-        subject: "For Quotation",
+        subject: quotationSubject || "For Quotation",
         items,
-        vatType:
-          vatType === "vat_exe"
-            ? "VAT Exe"
-            : vatType === "vat_inc"
-              ? "VAT Inc"
-              : "Zero-Rated",
+
+        // --- TAX & WITHHOLDING LOGIC ---
+        // VAT Type (Tax property of the Sale)
+        vatType: vatType,
+        vatTypeLabel:
+          vatType === "vat_inc" ? "VAT Inc" :
+            vatType === "vat_exe" ? "VAT Exe" : "Zero-Rated",
+
+        // Withholding Tax (Tax property of the Buyer/Relationship)
+        whtType: whtType, // value like "wht_1", "wht_2", or "none"
+        whtLabel:
+          whtType === "wht_1" ? "EWT 1% (Goods)" :
+            whtType === "wht_2" ? "EWT 2% (Services)" : "None",
+
+        // --- CALCULATION LOGIC ---
         totalPrice: Number(quotationAmount ?? 0),
+        deliveryFee: Number(deliveryFee ?? 0),
+        restockingFee: Number(restockingFee ?? 0),
+
+        // EWT is calculated on Net of VAT (Total / 1.12)
+        whtAmount: whtType !== "none"
+          ? (Number(quotationAmount ?? 0) / 1.12) * (whtType === "wht_1" ? 0.01 : 0.02)
+          : 0,
+
+        // This is the actual cash expected to be received
+        netAmountToCollect: Number(quotationAmount ?? 0) - (
+          whtType !== "none" ? (Number(quotationAmount ?? 0) / 1.12) * (whtType === "wht_1" ? 0.01 : 0.02) : 0
+        ),
+
+        // --- REPRESENTATIVE DETAILS ---
         salesRepresentative: salesRepresentativeName,
         salesemail,
         salescontact,
@@ -594,7 +681,6 @@ export function QuotationSheet(props: Props) {
       const isDiscounted = p.isDiscounted ?? false;
       const discount = isDiscounted ? (p.discount ?? 0) : 0;
 
-      // Logic mirrored from handleDownloadQuotation
       const baseAmount = qty * unitPrice;
       const discountedAmount = isDiscounted && discount > 0 ? (baseAmount * discount) / 100 : 0;
       const totalAmount = baseAmount - discountedAmount;
@@ -602,6 +688,8 @@ export function QuotationSheet(props: Props) {
       return {
         itemNo: index + 1,
         qty,
+        unit: p.unit || "pcs",
+        isLineItem: p.isLineItem ?? false,
         photo: p.images?.[0]?.src ?? "",
         title: p.title ?? "",
         sku: p.skus?.join(", ") ?? "",
@@ -613,6 +701,24 @@ export function QuotationSheet(props: Props) {
       };
     });
 
+    // --- CALCULATION LOGIC ---
+    const totalInvoiceAmount = Number(quotationAmount ?? 0);
+
+    // Define the Taxable Base for Withholding
+    // If VAT Inc, base = Total / 1.12. Otherwise, base = Total.
+    const whtBase = vatType === "vat_inc"
+      ? totalInvoiceAmount / 1.12
+      : totalInvoiceAmount;
+
+    // Define the Withholding Rate
+    const whtRate = whtType === "wht_1" ? 0.01 : whtType === "wht_2" ? 0.02 : 0;
+
+    // Calculate final EWT Amount
+    const whtAmount = whtBase * whtRate;
+
+    // Actual cash to be collected from the client
+    const netAmountToCollect = totalInvoiceAmount - whtAmount;
+
     return {
       referenceNo: quotationNumber ?? "DRAFT-XXXX",
       date: new Date().toLocaleDateString(),
@@ -621,11 +727,25 @@ export function QuotationSheet(props: Props) {
       telNo: contact_number ?? "",
       email: email_address ?? "",
       attention: contact_person ? contact_person : "",
-      subject: "For Quotation",
+      subject: quotationSubject || "For Quotation",
       items,
+
+      // --- TAX LOGIC ---
+      vatType,
       vatTypeLabel: vatType === "vat_inc" ? "VAT Inc" : vatType === "vat_exe" ? "VAT Exe" : "Zero-Rated",
-      totalPrice: Number(quotationAmount ?? 0),
-      deliveryFee: deliveryFee,
+
+      // --- WITHHOLDING TAX LOGIC ---
+      whtType,
+      whtLabel: whtType === "wht_1" ? "EWT 1% (Goods)" : whtType === "wht_2" ? "EWT 2% (Services)" : "No Withholding",
+      whtAmount,
+      whtBase, // Useful for the preview table to show the calculation source
+
+      // --- TOTALS ---
+      totalPrice: totalInvoiceAmount,
+      deliveryFee: Number(deliveryFee ?? 0),
+      netAmountToCollect,
+
+      // --- STAFF DETAILS ---
       salesRepresentative: salesRepresentativeName,
       salesemail,
       salescontact: contact ?? "",
@@ -892,9 +1012,10 @@ export function QuotationSheet(props: Props) {
         <table class="main-table">
         <thead>
         <tr>
-        <th style="width: 40px;">ITEM NO</th>
-        <th style="width: 40px;">QTY</th>
-        <th style="width: 120px;">REFERENCE PHOTO</th>
+        <th style="width: 35px;">ITEM NO</th>
+        <th style="width: 35px;">QTY</th>
+        <th style="width: 50px;">UNIT</th>
+        <th style="width: 110px;">REFERENCE PHOTO</th>
         <th style="width: 200px;">PRODUCT DESCRIPTION</th>
         <th style="width: 80px; text-align:right;">UNIT PRICE</th>
         <th style="width: 80px; text-align:right;">TOTAL AMOUNT</th>
@@ -913,16 +1034,17 @@ export function QuotationSheet(props: Props) {
           <div class="content-area">
           <table class="main-table" style="border: 1.5px solid black; border-top: none;">
           <tr>
-          <td style="width: 40px;" class="item-no">${index + 1}</td>
-          <td style="width: 40px;" class="qty-col">${item.qty}</td>
-          <td style="width: 120px;"><img src="${item.photo}" class="ref-photo"></td>
+          <td style="width: 35px;" class="item-no">${index + 1}</td>
+          <td style="width: 35px;" class="qty-col">${item.qty}</td>
+          <td style="width: 50px; text-align:center; vertical-align:middle; font-size:8px; font-weight:700; color:#6b7280;">${item.unit || "pcs"}</td>
+          <td style="width: 110px; text-align:center; padding:8px; vertical-align:middle;">${item.isLineItem ? "" : `<img src="${item.photo}" class="ref-photo">`}</td>
           <td style="width: 200px;">
           <div class="product-title" style="font-size: 7px;">${item.title}</div>
-          <div class="sku-text">${item.sku}</div>
+          ${!item.isLineItem ? `<div class="sku-text">${item.sku}</div>` : ""}
           <div class="desc-text">${item.description}</div>
           </td>
-          <td style="width: 80px; text-align:right;">₱${item.unitPrice.toLocaleString()}</td>
-          <td style="width: 80px; text-align:right; font-weight:900;">₱${item.totalAmount.toLocaleString()}</td>
+          <td style="width: 80px; text-align:right;">₱${item.unitPrice.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td style="width: 80px; text-align:right; font-weight:900;">₱${item.totalAmount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
           </tr>
           </table>
           </div>
@@ -1628,138 +1750,328 @@ export function QuotationSheet(props: Props) {
       {/* product selection dialog/modal */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className={`max-h-[90vh] overflow-y-auto p-6 transition-all duration-300 ${selectedProducts.length === 0
-            ? "w-[60vw]"
-            : "w-[90vw]"
-            }`}
+          className="h-[95vh] sm:max-h-[95vh] overflow-hidden p-0 sm:p-0 w-full sm:w-[90vw] flex flex-col"
           style={{
             maxWidth: selectedProducts.length === 0 ? "900px" : "1900px",
             width: "100vw",
           }}
         >
+          {/* HEADER */}
+          <div className="flex flex-col border-b border-gray-200 shrink-0">
+            <div className="flex items-center justify-between px-5 py-4">
+              <div className="flex items-center gap-3">
+                <DialogTitle className="font-black text-base tracking-tight">Select Products</DialogTitle>
+                {selectedProducts.length > 0 && (
+                  <span className="hidden lg:inline-flex items-center justify-center bg-[#121212] text-white text-[10px] font-black rounded-full w-5 h-5">
+                    {selectedProducts.length}
+                  </span>
+                )}
+              </div>
+              {/* Desktop: show total in header when products selected */}
+              {selectedProducts.length > 0 && (
+                <div className="hidden lg:flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg px-4 py-2">
+                  <span className="text-gray-400 font-bold uppercase text-[9px] tracking-widest">Total</span>
+                  <span className="font-black text-xl text-[#121212] tabular-nums">
+                    PHP {Number(quotationAmount).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
+            </div>
+            {/* Mobile Tab Switcher */}
+            {selectedProducts.length > 0 && (
+              <div className="flex lg:hidden border-t border-gray-100 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setMobilePanelTab("search")}
+                  className={`flex-1 py-2.5 transition-colors border-b-2 ${mobilePanelTab === "search" ? "border-[#121212] text-[#121212] bg-white" : "border-transparent text-gray-400 bg-gray-50"}`}
+                >
+                  🔍 Search
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobilePanelTab("products")}
+                  className={`flex-1 py-2.5 transition-colors border-b-2 ${mobilePanelTab === "products" ? "border-[#121212] text-[#121212] bg-white" : "border-transparent text-gray-400 bg-gray-50"}`}
+                >
+                  🛒 Products ({selectedProducts.length})
+                </button>
+              </div>
+            )}
+          </div>
 
-          <DialogHeader>
-            <DialogTitle className="font-bold">Select Products</DialogTitle>
-          </DialogHeader>
-
+          {/* BODY */}
+          <div className="flex-1 overflow-hidden">
           <div
-            className={`grid gap-6 mt-4 max-h-[75vh] overflow-hidden ${selectedProducts.length === 0
+            className={`h-full grid gap-0 lg:gap-4 lg:p-4 p-0 overflow-y-auto ${selectedProducts.length === 0
               ? "grid-cols-1"
-              : "grid-cols-[1fr_2.5fr]"
+              : "grid-cols-1 lg:grid-cols-[300px_1fr] lg:overflow-hidden"
               }`}
           >
 
             {/* Left side: Search + checkbox selected */}
-            <div className="flex flex-col gap-4 overflow-y-auto pr-2">
-              <div className="flex flex-col gap-4 sticky top-0 bg-white z-10 pb-2">
-                <div className="flex border rounded-md overflow-hidden border-gray-300">
+            <div className={`flex-col gap-3 overflow-y-auto px-3 lg:px-0 pt-3 lg:pt-0 h-full ${selectedProducts.length > 0 && mobilePanelTab === "products" ? "hidden lg:flex" : "flex"}`}>
+              <div className="flex flex-col gap-3 sticky top-0 bg-white z-10 pb-2">
+
+                {/* Source Switcher */}
+                <div className="grid grid-cols-4 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  {[
+                    { source: "shopify", label: "Shopify", icon: "🛍️" },
+                    { source: "firebase_shopify", label: "CMS", icon: "📦" },
+                    { source: "firebase_taskflow", label: "DB", icon: "🗄️" },
+                  ].map(({ source: s, label, icon }) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => { setProductSource(s as any); setSearchTerm(""); setSearchResults([]); setIsSpfMode(false); }}
+                      className={`flex flex-col items-center justify-center py-2.5 px-1 text-[9px] font-black uppercase tracking-wide transition-all ${productSource === s && !isSpfMode ? "bg-[#121212] text-white" : "bg-white text-gray-400 hover:bg-gray-50 hover:text-gray-700"}`}
+                    >
+                      <span className="text-sm mb-0.5">{icon}</span>
+                      <span>{label}</span>
+                    </button>
+                  ))}
                   <button
                     type="button"
-                    onClick={() => {
-                      setProductSource("shopify");
-                      setSearchTerm("");
-                      setSearchResults([]);
-                    }}
-                    className={`flex-1 py-4 text-[10px] font-bold transition-colors ${productSource === "shopify"
-                      ? "bg-[#121212] text-white"
-                      : "bg-white text-gray-500 hover:bg-gray-50"
-                      }`}
+                    onClick={() => { setIsSpfMode(true); setSearchTerm(""); setSearchResults([]); }}
+                    className={`flex flex-col items-center justify-center py-2.5 px-1 text-[9px] font-black uppercase tracking-wide transition-all border-l border-gray-200 ${isSpfMode ? "bg-red-600 text-white" : "bg-white text-red-500 hover:bg-red-50"}`}
                   >
-                    SHOPIFY
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProductSource("firebase_shopify");
-                      setSearchTerm("");
-                      setSearchResults([]);
-                    }}
-                    className={`flex-1 py-4 text-[10px] font-bold transition-colors ${productSource === "firebase_shopify"
-                      ? "bg-[#121212] text-white"
-                      : "bg-white text-gray-500 hover:bg-gray-50"
-                      }`}
-                  >
-                    CMS
-                  </button>
-                  <button
-                    onClick={() => {
-                      setProductSource("firebase_taskflow");
-                      setSearchTerm("");
-                      setSearchResults([]);
-                    }}
-                    className={`flex-1 py-2 text-[10px] font-bold transition-colors ${productSource === "firebase_taskflow"
-                      ? "bg-[#121212] text-white"
-                      : "bg-white text-gray-500 hover:bg-gray-50"
-                      }`}
-                  >
-                    PRODUCT DATABASE
+                    <span className="text-sm mb-0.5">📋</span>
+                    <span>SPF</span>
                   </button>
                 </div>
 
-                {!isManualEntry && (
-                  <>
-                    <FieldLabel>Products:</FieldLabel>
-                    <Input
-                      type="text"
-                      className="uppercase rounded-none"
-                      placeholder="Search Product Name or Item Code.."
-                      value={searchTerm}
-                      onChange={async (e) => {
-                        if (isManualEntry) return;
-                        const rawValue = e.target.value;
-                        setSearchTerm(rawValue);
+                {/* SPF Manual Entry Form OR Normal Search Input — never both */}
+                {isSpfMode ? (
+                  <div className="flex flex-col gap-2 border border-red-200 bg-red-50 p-2.5 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase text-red-600 tracking-widest">SPF</span>
+                      <span className="text-[9px] text-red-400 italic">— Special Product Form</span>
+                    </div>
 
-                        if (rawValue.length < 2) {
-                          setSearchResults([]);
-                          return;
-                        }
+                    {/* Cloudinary Image Upload */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold uppercase text-gray-500">Product Image (optional)</label>
+                      <div className="flex items-center gap-2">
+                        <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-red-300 bg-white px-3 py-2 cursor-pointer hover:bg-red-50 transition ${spfUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                          <ImagePlus className="w-4 h-4 text-red-400" />
+                          <span className="text-[10px] font-bold uppercase text-red-500">
+                            {spfUploading ? "Uploading..." : spfManualProduct.imageUrl ? "Change Image" : "Upload Image"}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={spfUploading}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setSpfUploading(true);
+                              try {
+                                // Delete old image if replacing
+                                if (spfManualProduct.cloudinaryPublicId) {
+                                  await deleteCloudinaryImage(spfManualProduct.cloudinaryPublicId);
+                                }
+                                const formData = new FormData();
+                                formData.append("file", file);
+                                const res = await fetch("/api/cloudinary/upload", {
+                                  method: "POST",
+                                  body: formData,
+                                });
+                                const data = await res.json();
+                                if (data.url) {
+                                  setSpfManualProduct(prev => ({
+                                    ...prev,
+                                    imageUrl: data.url,
+                                    cloudinaryPublicId: data.publicId || "",
+                                  }));
+                                }
+                              } catch (err) {
+                                console.error("Upload failed:", err);
+                              } finally {
+                                setSpfUploading(false);
+                              }
+                            }}
+                          />
+                        </label>
+                        {spfManualProduct.imageUrl && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await deleteCloudinaryImage(spfManualProduct.cloudinaryPublicId);
+                              setSpfManualProduct(prev => ({ ...prev, imageUrl: "", cloudinaryPublicId: "" }));
+                            }}
+                            className="p-1 text-red-500 hover:text-red-700"
+                            title="Remove image"
+                          >
+                            <Trash className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      {spfManualProduct.imageUrl && (
+                        <img
+                          src={spfManualProduct.imageUrl}
+                          alt="preview"
+                          className="w-20 h-20 object-cover border border-gray-200 mt-1 rounded-sm"
+                        />
+                      )}
+                    </div>
 
-                        setIsSearching(true);
-                        try {
-                          if (productSource === 'shopify') {
-                            const res = await fetch(`/api/shopify/products?q=${rawValue.toLowerCase()}`);
-                            let data = await res.json();
-                            setSearchResults(data.products || []);
-                          } else if (
-                            productSource === "firebase_shopify" ||
-                            productSource === "firebase_taskflow"
-                          ) {
-                            const searchUpper = rawValue.toUpperCase();
+                    {/* Product Name */}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Product Name *</label>
+                      <Input
+                        type="text"
+                        placeholder="Enter product name..."
+                        value={spfManualProduct.title}
+                        onChange={(e) => setSpfManualProduct(prev => ({ ...prev, title: e.target.value }))}
+                        className="rounded-none text-xs uppercase"
+                      />
+                    </div>
 
-                            const websiteFilter =
-                              productSource === "firebase_shopify"
-                                ? "Shopify"
-                                : "Taskflow";
+                    {/* SKU */}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Item Code / SKU</label>
+                      <Input
+                        type="text"
+                        placeholder="Enter item code..."
+                        value={spfManualProduct.sku}
+                        onChange={(e) => setSpfManualProduct(prev => ({ ...prev, sku: e.target.value }))}
+                        className="rounded-none text-xs uppercase"
+                      />
+                    </div>
 
-                            const q = query(
-                              collection(db, "products"),
-                              where("websites", "array-contains", websiteFilter)
-                            );
+                    {/* Quantity & Price */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Qty</label>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="1"
+                          value={spfManualProduct.quantity}
+                          onChange={(e) => setSpfManualProduct(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                          className="rounded-none text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Unit Price</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          placeholder="0.00"
+                          value={spfManualProduct.price}
+                          onChange={(e) => setSpfManualProduct(prev => ({ ...prev, price: Math.max(0, parseFloat(e.target.value) || 0) }))}
+                          className="rounded-none text-xs"
+                        />
+                      </div>
+                    </div>
 
-                            const querySnapshot = await getDocs(q);
+                    {/* Description */}
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Description / Specs</label>
+                      <Textarea
+                        placeholder="Enter product description or specifications..."
+                        value={spfManualProduct.description}
+                        onChange={(e) => setSpfManualProduct(prev => ({ ...prev, description: e.target.value }))}
+                        rows={3}
+                        className="rounded text-xs"
+                      />
+                    </div>
 
-                            const firebaseResults = querySnapshot.docs
-                              .map(doc => {
-                                const data = doc.data();
+                    {/* Add Button */}
+                    <Button
+                      type="button"
+                      disabled={!spfManualProduct.title}
+                      onClick={() => {
+                        setSelectedProducts(prev => [
+                          ...prev,
+                          {
+                            id: `spf-${crypto.randomUUID()}`,
+                            uid: crypto.randomUUID(),
+                            title: spfManualProduct.title.toUpperCase(),
+                            description: spfManualProduct.description,
+                            skus: spfManualProduct.sku ? [spfManualProduct.sku] : [],
+                            images: spfManualProduct.imageUrl ? [{ src: spfManualProduct.imageUrl }] : [],
+                            quantity: spfManualProduct.quantity,
+                            price: spfManualProduct.price,
+                            discount: 0,
+                            isDiscounted: false,
+                            cloudinaryPublicId: spfManualProduct.cloudinaryPublicId,
+                          }
+                        ]);
+                        setSpfManualProduct({ title: "", sku: "", price: 0, quantity: 1, description: "", imageUrl: "", cloudinaryPublicId: "" });
+                        setMobilePanelTab("products"); // auto-switch to products view on mobile
+                      }}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center justify-center gap-2 h-9 mt-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add SPF Product
+                    </Button>
+                  </div>
+                ) : (
+                  !isManualEntry && (
+                    <>
+                      <FieldLabel>Products:</FieldLabel>
+                      <Input
+                        type="text"
+                        className="uppercase rounded-none"
+                        placeholder="Search Product Name or Item Code.."
+                        value={searchTerm}
+                        onChange={async (e) => {
+                          if (isManualEntry) return;
+                          const rawValue = e.target.value;
+                          setSearchTerm(rawValue);
 
-                                let specsHtml = `<p><strong>${data.shortDescription || ""}</strong></p>`;
-                                let rawSpecsText = "";
+                          if (rawValue.length < 2) {
+                            setSearchResults([]);
+                            return;
+                          }
 
-                                if (Array.isArray(data.technicalSpecs)) {
-                                  data.technicalSpecs.forEach((group: any) => {
-                                    rawSpecsText += ` ${group.specGroup}`;
+                          setIsSearching(true);
+                          try {
+                            if (productSource === 'shopify') {
+                              const res = await fetch(`/api/shopify/products?q=${rawValue.toLowerCase()}`);
+                              let data = await res.json();
+                              setSearchResults(data.products || []);
+                            } else if (
+                              productSource === "firebase_shopify" ||
+                              productSource === "firebase_taskflow"
+                            ) {
+                              const searchUpper = rawValue.toUpperCase();
 
-                                    specsHtml += `
+                              const websiteFilter =
+                                productSource === "firebase_shopify"
+                                  ? "Shopify"
+                                  : "Taskflow";
+
+                              const q = query(
+                                collection(db, "products"),
+                                where("websites", "array-contains", websiteFilter)
+                              );
+
+                              const querySnapshot = await getDocs(q);
+
+                              const firebaseResults = querySnapshot.docs
+                                .map(doc => {
+                                  const data = doc.data();
+
+                                  let specsHtml = `<p><strong>${data.shortDescription || ""}</strong></p>`;
+                                  let rawSpecsText = "";
+
+                                  if (Array.isArray(data.technicalSpecs)) {
+                                    data.technicalSpecs.forEach((group: any) => {
+                                      rawSpecsText += ` ${group.specGroup}`;
+
+                                      specsHtml += `
 <div style="background:#121212;color:white;padding:4px 8px;font-weight:900;text-transform:uppercase;font-size:9px;margin-top:8px">
 ${group.specGroup}
 </div>`;
 
-                                    specsHtml += `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">`;
+                                      specsHtml += `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px">`;
 
-                                    group.specs?.forEach((spec: any) => {
-                                      rawSpecsText += ` ${spec.name} ${spec.value}`;
+                                      group.specs?.forEach((spec: any) => {
+                                        rawSpecsText += ` ${spec.name} ${spec.value}`;
 
-                                      specsHtml += `
+                                        specsHtml += `
 <tr>
 <td style="border:1px solid #e5e7eb;padding:4px;background:#f9fafb;width:40%">
 <b>${spec.name}</b>
@@ -1768,57 +2080,54 @@ ${group.specGroup}
 ${spec.value}
 </td>
 </tr>`;
+                                      });
+
+                                      specsHtml += `</table>`;
                                     });
+                                  }
 
-                                    specsHtml += `</table>`;
-                                  });
-                                }
+                                  return {
+                                    id: doc.id,
+                                    title: data.name || "No Name",
+                                    price: data.salePrice || data.regularPrice || 0,
+                                    description: specsHtml,
+                                    images: data.mainImage ? [{ src: data.mainImage }] : [],
+                                    skus: data.itemCode ? [data.itemCode] : [],
+                                    discount: 0,
+                                    tempSearchMetadata: (
+                                      data.name +
+                                      " " +
+                                      (data.itemCode || "") +
+                                      " " +
+                                      rawSpecsText
+                                    ).toUpperCase()
+                                  };
+                                })
+                                .filter(p => p.tempSearchMetadata.includes(searchUpper));
 
-                                return {
-                                  id: doc.id,
-
-                                  title: data.name || "No Name",
-                                  price: data.salePrice || data.regularPrice || 0,
-                                  description: specsHtml,
-
-                                  images: data.mainImage ? [{ src: data.mainImage }] : [],
-                                  skus: data.itemCode ? [data.itemCode] : [],
-
-                                  discount: 0,
-
-                                  tempSearchMetadata: (
-                                    data.name +
-                                    " " +
-                                    (data.itemCode || "") +
-                                    " " +
-                                    rawSpecsText
-                                  ).toUpperCase()
-                                };
-                              })
-                              .filter(p => p.tempSearchMetadata.includes(searchUpper));
-
-                            setSearchResults(firebaseResults);
+                              setSearchResults(firebaseResults);
+                            }
+                          } catch (err) {
+                            console.error("Search Protocol Failure:", err);
+                          } finally {
+                            setIsSearching(false);
                           }
-                        } catch (err) {
-                          console.error("Search Protocol Failure:", err);
-                        } finally {
-                          setIsSearching(false);
-                        }
-                      }}
-                    />
-                    {isSearching && <p className="text-[10px] animate-pulse">Searching...</p>}
-                  </>
+                        }}
+                      />
+                      {isSearching && <p className="text-[10px] animate-pulse">Searching...</p>}
+                    </>
+                  )
                 )}
               </div>
 
-              {!isManualEntry && searchResults.length > 0 && (
+              {/* Search Results — only shown when not in SPF mode */}
+              {!isSpfMode && !isManualEntry && searchResults.length > 0 && (
                 <>
                   <div className="text-xs text-green-600 mb-2">
                     Note: you can choose the same products.
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-1 xl:grid-cols-2 gap-4">
-
                     {searchResults.map((item) => (
                       <Card key={item.id} className="cursor-pointer hover:bg-gray-50 rounded-xs">
                         <CardHeader className="flex items-center justify-between gap-3">
@@ -1836,6 +2145,7 @@ ${spec.value}
                                     description: item.description || "",
                                   },
                                 ]);
+                                setMobilePanelTab("products"); // auto-switch to products view on mobile
                               }}
                               className="w-6 h-6 p-0 flex items-center justify-center rounded-full cursor-pointer"
                             >
@@ -1873,22 +2183,24 @@ ${spec.value}
               )}
 
               {/* Selected Products checkboxes */}
-              <div className="flex flex-col gap-2 overflow-y-auto max-h-[50vh] border border-dashed p-4 rounded-sm">
+              <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[20vh] lg:max-h-[35vh] border border-dashed p-2 rounded-lg">
                 {selectedProducts.length === 0 && (
                   <p className="text-xs text-gray-500">No products selected.</p>
                 )}
 
                 {selectedProducts.map((item, index) => (
                   <div key={item.uid} className="flex flex-col">
-                    {/* Optional separator except for the first item */}
                     {index !== 0 && <Separator className="my-1" />}
-
                     <label className="flex items-center gap-2 text-xs cursor-pointer font-bold">
                       <input
                         type="checkbox"
                         checked
                         className="accent-blue-500"
                         onChange={() => {
+                          const toRemove = selectedProducts.find((p) => p.uid === item.uid);
+                          if (toRemove?.cloudinaryPublicId) {
+                            deleteCloudinaryImage(toRemove.cloudinaryPublicId);
+                          }
                           setSelectedProducts((prev) =>
                             prev.filter((p) => p.uid !== item.uid)
                           );
@@ -1903,50 +2215,71 @@ ${spec.value}
                     </label>
                   </div>
                 ))}
-
               </div>
             </div>
 
             {/* Right side: Selected Products as Table with Image & Editable Description */}
-            <div className="overflow-y-auto max-h-[75vh]">
+            <div className={`overflow-y-auto px-3 lg:px-0 pb-3 lg:pb-0 min-h-0 ${selectedProducts.length > 0 && mobilePanelTab === "search" ? "hidden lg:block" : "block"}`}>
               {selectedProducts.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between mb-3">
-                    {/* LEFT */}
-                    <h4 className="font-bold text-xs">
-                      Selected Products: ({selectedProducts.length})
-                    </h4>
+                  {/* Controls bar - desktop horizontal, mobile compact */}
+                  <div className="flex flex-col gap-2 mb-3">
+                    <div className="hidden lg:flex items-center justify-between mb-1">
+                      <h4 className="font-black text-sm tracking-tight">
+                        Product List
+                        <span className="ml-2 text-xs font-normal text-gray-400">({selectedProducts.length} item{selectedProducts.length !== 1 ? "s" : ""})</span>
+                      </h4>
+                    </div>
+                    <h4 className="font-bold text-xs lg:hidden">Selected Products: ({selectedProducts.length})</h4>
 
-                    {/* RIGHT */}
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-bold">VAT Type:</span>
+                    {/* Subject + VAT + WHT — single compact toolbar */}
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-0 bg-gray-50 border border-gray-100 rounded-lg overflow-hidden text-[10px]">
+                      {/* Subject */}
+                      <div className="flex items-center gap-2 px-3 py-2 flex-1 min-w-0 border-b lg:border-b-0 lg:border-r border-gray-200">
+                        <span className="font-black uppercase text-gray-400 tracking-widest shrink-0">Subject</span>
+                        <input
+                          type="text"
+                          value={quotationSubject}
+                          onChange={(e) => setQuotationSubject(e.target.value)}
+                          placeholder="For Quotation"
+                          className="border-0 bg-transparent px-0 py-0 text-[10px] font-bold uppercase flex-1 min-w-0 focus:outline-none placeholder-gray-300"
+                        />
+                      </div>
 
-                      <RadioGroup
-                        value={vatType}       // direktang galing sa parent props
-                        onValueChange={setVatType} // direktang setter mula sa parent
-                        className="flex items-center gap-3"
-                      >
-                        {[
-                          { label: "VAT Inc", value: "vat_inc" },
-                          { label: "VAT Exe", value: "vat_exe", description: "(12%)" },
-                          { label: "Zero Rated", value: "zero_rated" },
-                        ].map(({ label, value, description }) => (
-                          <div key={value} className="flex items-center gap-1">
-                            <RadioGroupItem value={value} id={value} />
-                            <label htmlFor={value} className="text-xs cursor-pointer">
-                              {label} {description && <span className="text-[10px] text-red-600">{description}</span>}
-                            </label>
-                          </div>
-                        ))}
-                      </RadioGroup>
+                      {/* VAT */}
+                      <div className="flex items-center gap-2 px-3 py-2 border-b lg:border-b-0 lg:border-r border-gray-200">
+                        <span className="font-black uppercase text-gray-400 tracking-widest shrink-0">VAT</span>
+                        <RadioGroup value={vatType} onValueChange={setVatType} className="flex gap-2">
+                          {[{v:"vat_inc",l:"Inc"},{v:"vat_exe",l:"Exe"},{v:"zero_rated",l:"0%"}].map(({v,l})=>(
+                            <div key={v} className="flex items-center gap-0.5">
+                              <RadioGroupItem value={v} id={`vat-${v}`} />
+                              <label htmlFor={`vat-${v}`} className={`font-black uppercase cursor-pointer transition-colors ${vatType === v ? "text-[#121212]" : "text-gray-300"}`}>{l}</label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </div>
+
+                      {/* EWT */}
+                      <div className="flex items-center gap-2 px-3 py-2">
+                        <span className="font-black uppercase text-gray-400 tracking-widest shrink-0">EWT</span>
+                        <RadioGroup value={whtType} onValueChange={setWhtType} className="flex gap-2">
+                          {[{v:"none",l:"None"},{v:"wht_1",l:"1%"},{v:"wht_2",l:"2%"}].map(({v,l})=>(
+                            <div key={v} className="flex items-center gap-0.5">
+                              <RadioGroupItem value={v} id={`wht-${v}`} />
+                              <label htmlFor={`wht-${v}`} className={`font-black uppercase cursor-pointer transition-colors ${whtType === v ? "text-[#121212]" : "text-gray-300"}`}>{l}</label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </div>
                     </div>
                   </div>
 
+                  <div className="overflow-x-auto">
                   <table className="w-full text-xs table-auto border-collapse border border-gray-300">
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border p-4 text-center w-5">
-                          <label className="flex items-center justify-start gap-1 cursor-pointer">
+                      <tr className="bg-[#121212] text-white text-[10px] uppercase tracking-wider">
+                        <th className="border border-gray-700 p-2 text-center w-10">
+                          <label className="flex items-center justify-center gap-1 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={selectedProducts.every((p) => p.isDiscounted)}
@@ -1961,16 +2294,17 @@ ${spec.value}
                                 );
                               }}
                             />
-                            <span className="text-xs font-medium">All</span>
+                            <span className="font-bold">Disc%</span>
                           </label>
                         </th>
-                        <th className="border p-4 text-left w-5">Remarks</th>
-                        <th className="border p-4 text-left w-100">Product</th>
-                        <th className="border p-4 text-center w-5">Quantity</th>
-                        <th className="border p-4 text-center w-15">Price</th>
-                        <th className="border p-4 text-center w-10">-</th>
-                        <th className="border p-4 text-center w-10">Subtotal</th>
-                        <th className="border p-4 text-center w-5">Action</th>
+                        <th className="border border-gray-700 p-2 text-left hidden sm:table-cell font-bold">Remarks</th>
+                        <th className="border border-gray-700 p-2 text-left font-bold">Product</th>
+                        <th className="border border-gray-700 p-2 text-center font-bold w-16">Qty</th>
+                        <th className="border border-gray-700 p-2 text-center font-bold w-20">Unit</th>
+                        <th className="border border-gray-700 p-2 text-center font-bold w-24">Unit Price</th>
+                        <th className="border border-gray-700 p-2 text-center hidden sm:table-cell font-bold">Discount</th>
+                        <th className="border border-gray-700 p-2 text-center font-bold">Subtotal</th>
+                        <th className="border border-gray-700 p-2 text-center font-bold w-24">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2034,7 +2368,7 @@ ${spec.value}
                                 </div>
                               </td>
 
-                              <td>
+                              <td className="hidden sm:table-cell">
                                 <Textarea
                                   value={p.itemRemarks || ""}
                                   onChange={(e) => {
@@ -2051,33 +2385,68 @@ ${spec.value}
                                 />
                               </td>
 
-                              <td className="p-2 flex items-center gap-2">
-                                {/* Product Image */}
-                                <img
-                                  src={p.images?.[0]?.src || "/Taskflow.png"} // use default if no image
-                                  alt={p.title}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-
-                                {/* Product Title (Editable) */}
-                                <div
-                                  contentEditable
-                                  suppressContentEditableWarning
-                                  className="flex-1 outline-none"
-                                  onBlur={(e) => {
-                                    const html = e.currentTarget.innerHTML; // keep HTML
-                                    setSelectedProducts((prev) => {
-                                      const copy = [...prev];
-                                      copy[idx] = { ...copy[idx], description: html };
-                                      return copy;
-                                    });
-                                  }}
-                                >
-                                  {p.title}
-                                </div>
+                              <td className="p-1 sm:p-2">
+                                {p.isLineItem ? (
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[8px] font-black uppercase text-orange-500 bg-orange-50 border border-orange-200 px-1 py-0.5 rounded shrink-0">LINE</span>
+                                      <Input
+                                        type="text"
+                                        placeholder="Description (e.g. Delivery to Site)"
+                                        value={p.title}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setSelectedProducts((prev) => {
+                                            const copy = [...prev];
+                                            copy[idx] = { ...copy[idx], title: val, description: val };
+                                            return copy;
+                                          });
+                                        }}
+                                        className="flex-1 rounded-none text-[10px] sm:text-xs p-1 uppercase"
+                                      />
+                                    </div>
+                                    <Textarea
+                                      placeholder="Additional notes (optional)"
+                                      value={typeof p.description === "string" && !p.description.includes("<") ? p.description : ""}
+                                      rows={1}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedProducts((prev) => {
+                                          const copy = [...prev];
+                                          copy[idx] = { ...copy[idx], description: val };
+                                          return copy;
+                                        });
+                                      }}
+                                      className="rounded-none text-[10px] p-1 resize-none"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 sm:gap-2">
+                                    <img
+                                      src={p.images?.[0]?.src || "/Taskflow.png"}
+                                      alt={p.title}
+                                      className="w-8 h-8 sm:w-12 sm:h-12 object-cover rounded shrink-0"
+                                    />
+                                    <div
+                                      contentEditable
+                                      suppressContentEditableWarning
+                                      className="flex-1 outline-none text-[10px] sm:text-xs min-w-0 break-words"
+                                      onBlur={(e) => {
+                                        const html = e.currentTarget.innerHTML;
+                                        setSelectedProducts((prev) => {
+                                          const copy = [...prev];
+                                          copy[idx] = { ...copy[idx], description: html };
+                                          return copy;
+                                        });
+                                      }}
+                                    >
+                                      {p.title}
+                                    </div>
+                                  </div>
+                                )}
                               </td>
 
-                              <td className="border border-gray-300 p-2">
+                              <td className="border border-gray-300 p-1 sm:p-2">
                                 <Input
                                   type="number"
                                   min={1}
@@ -2090,11 +2459,30 @@ ${spec.value}
                                       return copy;
                                     });
                                   }}
-                                  className="w-full p-2 rounded-none"
+                                  className="w-12 sm:w-full p-1 sm:p-2 rounded-none text-xs"
                                 />
                               </td>
 
-                              <td className="border border-gray-300 p-2">
+                              <td className="border border-gray-300 p-1 sm:p-2">
+                                <select
+                                  value={p.unit || "pcs"}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSelectedProducts((prev) => {
+                                      const copy = [...prev];
+                                      copy[idx] = { ...copy[idx], unit: val };
+                                      return copy;
+                                    });
+                                  }}
+                                  className="w-full border border-gray-300 rounded-none text-xs p-1 bg-white focus:outline-none focus:border-gray-500"
+                                >
+                                  {["pcs","set/s","lot/s","unit","pair","meter","box"].map((u) => (
+                                    <option key={u} value={u}>{u}</option>
+                                  ))}
+                                </select>
+                              </td>
+
+                              <td className="border border-gray-300 p-1 sm:p-2">
                                 <Input
                                   type="number"
                                   min={0}
@@ -2108,11 +2496,11 @@ ${spec.value}
                                       return copy;
                                     });
                                   }}
-                                  className="w-full p-2 rounded-none"
+                                  className="w-16 sm:w-full p-1 sm:p-2 rounded-none text-xs"
                                 />
                               </td>
 
-                              <td className="border border-gray-300 p-2 font-semibold text-center">
+                              <td className="border border-gray-300 p-2 font-semibold text-center hidden sm:table-cell">
                                 {isDiscounted && discountedAmount > 0
                                   ? `₱${discountedAmount.toFixed(2)}`
                                   : "₱0.00"}
@@ -2148,17 +2536,17 @@ ${spec.value}
                                   <Button
                                     variant="outline"
                                     onClick={() => toggleRow(p.uid)}
-                                    className="flex items-center rounded-none gap-1"
+                                    className="flex items-center rounded-none gap-1 px-2"
                                   >
                                     {expandedRows[p.uid] ? (
                                       <>
                                         <EyeOff className="w-4 h-4" />
-                                        Hide
+                                        <span className="hidden sm:inline">Hide</span>
                                       </>
                                     ) : (
                                       <>
                                         <Eye className="w-4 h-4" />
-                                        View
+                                        <span className="hidden sm:inline">View</span>
                                       </>
                                     )}
                                   </Button>
@@ -2166,6 +2554,9 @@ ${spec.value}
                                     variant="outline"
                                     className="flex items-center rounded-none gap-1"
                                     onClick={() => {
+                                      if (p.cloudinaryPublicId) {
+                                        deleteCloudinaryImage(p.cloudinaryPublicId);
+                                      }
                                       setSelectedProducts((prev) =>
                                         prev.filter((item) => item.uid !== p.uid)
                                       );
@@ -2225,104 +2616,166 @@ ${spec.value}
                       })}
 
                     </tbody>
+                    <tbody>
+                      <tr>
+                        <td colSpan={9} className="border border-gray-300 p-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newLineItem: SelectedProduct = {
+                                id: `line-${crypto.randomUUID()}`,
+                                uid: crypto.randomUUID(),
+                                title: "",
+                                description: "",
+                                skus: [],
+                                images: [],
+                                quantity: 1,
+                                price: 0,
+                                discount: 0,
+                                isDiscounted: false,
+                                unit: "lot/s",
+                                isLineItem: true,
+                              };
+                              setSelectedProducts((prev) => [...prev, newLineItem]);
+                              setMobilePanelTab("products");
+                            }}
+                            className="w-full flex items-center justify-center gap-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors border border-dashed border-gray-300 rounded"
+                          >
+                            <Plus className="w-3 h-3" /> Add Line Item
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
                     <tfoot className="bg-gray-100 font-bold text-xs">
                       <tr>
-                        {/* Vat Adjust Column */}
-                        <td className="border border-gray-300 p-2 text-center">
-                        </td>
-                        <td className="border border-gray-300 p-2 text-center">
-                        </td>
-
-                        {/* Product Column: leave empty */}
+                        <td className="border border-gray-300 p-2 text-center"></td>
+                        <td className="border border-gray-300 p-2 text-center hidden sm:table-cell"></td>
                         <td className="border border-gray-300 p-2"></td>
-
-                        {/* Quantity Column */}
-                        <td className="border border-gray-300 p-4 text-left">
+                        <td className="border border-gray-300 p-2 text-center font-black">
                           {selectedProducts.reduce((acc, p) => acc + p.quantity, 0)}
                         </td>
-
-                        {/* Price Column */}
-                        <td className="border border-gray-300 p-4 text-left">
-                          {selectedProducts
-                            .reduce((acc, p) => acc + p.price, 0)
-                            .toFixed(2)}
+                        <td className="border border-gray-300 p-2 text-center"></td>
+                        <td className="border border-gray-300 p-2 text-center font-black">
+                          {selectedProducts.reduce((acc, p) => acc + p.price, 0).toFixed(2)}
                         </td>
-
-                        {/* Discounted Column */}
-                        <td className="border border-gray-300 p-2 text-center">
-                          ₱{selectedProducts
-                            .reduce((acc, p) => {
-                              const discount = p.isDiscounted ? p.discount ?? 0 : 0;
-                              const baseAmount = p.price * p.quantity;
-                              return acc + (baseAmount * discount) / 100;
-                            }, 0)
-                            .toFixed(2)}
+                        <td className="border border-gray-300 p-2 text-center hidden sm:table-cell">
+                          ₱{selectedProducts.reduce((acc, p) => {
+                            const discount = p.isDiscounted ? p.discount ?? 0 : 0;
+                            const baseAmount = p.price * p.quantity;
+                            return acc + (baseAmount * discount) / 100;
+                          }, 0).toFixed(2)}
                         </td>
-
-                        {/* Subtotal Column */}
-                        <td className="border border-gray-300 p-2 text-center">
-                          ₱{selectedProducts
-                            .reduce((acc, p) => {
-                              const discount = p.isDiscounted ? p.discount ?? 0 : 0;
-                              const baseAmount = p.price * p.quantity;
-                              return acc + baseAmount - (baseAmount * discount) / 100;
-                            }, 0)
-                            .toFixed(2)}
+                        <td className="border border-gray-300 p-2 text-center font-black">
+                          ₱{selectedProducts.reduce((acc, p) => {
+                            const discount = p.isDiscounted ? p.discount ?? 0 : 0;
+                            const baseAmount = p.price * p.quantity;
+                            return acc + baseAmount - (baseAmount * discount) / 100;
+                          }, 0).toFixed(2)}
                         </td>
+                        <td className="border border-gray-300 p-2"></td>
+                      </tr>
 
-                        {/* Action Column: leave empty */}
-                        <td className="border border-gray-300 p-2">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="text-sm whitespace-nowrap">Delivery Fee:</span>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              className="w-24 text-center border border-gray-300 rounded-none px-2 py-1"
-                              placeholder="0.00"
-                              value={deliveryFee}
-                              onChange={(e) => setDeliveryFee(e.target.value)}
-                            />
+                      {/* Delivery & Restocking Fee Row — desktop only inside table */}
+                      <tr className="hidden sm:table-row">
+                        <td colSpan={4} className="border border-gray-300 p-2"></td>
+                        <td colSpan={4} className="border border-gray-300 p-2">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs whitespace-nowrap font-bold">Delivery Fee:</span>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                className="w-24 text-center border border-gray-300 rounded-none px-2 py-1 text-xs"
+                                placeholder="0.00"
+                                value={deliveryFee}
+                                onChange={(e) => setDeliveryFee(e.target.value)}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs whitespace-nowrap font-bold">Restocking Fee:</span>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                className="w-24 text-center border border-gray-300 rounded-none px-2 py-1 text-xs"
+                                placeholder="0.00"
+                                value={restockingFee}
+                                onChange={(e) => setRestockingFee(e.target.value)}
+                              />
+                            </div>
                           </div>
                         </td>
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
+
+                  {/* Delivery & Restocking Fee — mobile only, below table */}
+                  <div className="sm:hidden border border-gray-200 bg-gray-50 p-3 mt-1">
+                    <div className="flex items-center justify-between py-1.5 border-b border-gray-200">
+                      <span className="text-xs font-bold uppercase text-gray-600">Delivery Fee</span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        className="w-28 text-right border border-gray-300 rounded-none px-2 py-1 text-xs bg-white"
+                        placeholder="0.00"
+                        value={deliveryFee}
+                        onChange={(e) => setDeliveryFee(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between py-1.5">
+                      <span className="text-xs font-bold uppercase text-gray-600">Restocking Fee</span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        className="w-28 text-right border border-gray-300 rounded-none px-2 py-1 text-xs bg-white"
+                        placeholder="0.00"
+                        value={restockingFee}
+                        onChange={(e) => setRestockingFee(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </>
               )}
             </div>
           </div>
 
-          {/* Description above the footer */}
-          <div className="text-xs text-red-600 text-right italic border border-red-500 p-2 bg-red-100">
-            <p>Note: Quotation Number is not included in the Preview Sample (only appears on the final downloaded quotation).</p>
+          </div>{/* end BODY */}
+
+          {/* Note bar - compact */}
+          <div className="text-[10px] text-red-500 text-center italic px-3 py-1.5 bg-red-50 border-t border-red-200 shrink-0">
+            ⚠️ Quotation Number only appears on the final downloaded quotation.
           </div>
 
-          <DialogFooter className="flex items-center justify-between">
-            {/* Left side: Close button */}
+          <DialogFooter className="flex flex-col gap-2 px-4 py-3 border-t border-gray-200 shrink-0 sm:flex-row sm:items-center sm:justify-between">
+            {/* Mobile total — hidden on desktop (shown in header instead) */}
             {selectedProducts.length > 0 && (
-              <div className="flex items-center gap-4">
-                <div className="text-sm font-semibold">
-                  Overall Total: ₱{quotationAmount}
-                </div>
-                {/* <div className="flex flex-col items-start">
-                  <Button className="bg-orange-500" onClick={handleDownloadQuotation}>
-                    <Download /> Preview Sample
-                  </Button>
-                </div> */}
-                {/* Inside the main selection modal footer */}
-                <Button
-                  className="bg-[#121212] hover:bg-black text-white px-8 flex gap-2 items-center rounded-none"
-                  onClick={() => setIsPreviewOpen(true)} // Changed from handleDownloadQuotation
-                >
-                  <Eye className="w-4 h-4" /> {/* Eye icon for "Preview" */}
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Review Quotation</span>
-                </Button>
+              <div className="flex items-center justify-between lg:hidden">
+                <span className="text-xs text-gray-500 uppercase font-bold tracking-widest">Total:</span>
+                <span className="text-lg font-black text-[#121212] tabular-nums">
+                  PHP {Number(quotationAmount).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
               </div>
             )}
 
-            <Button className="rounded-none" variant="outline" onClick={() => setOpen(false)}>
-              <XCircle /> Close
-            </Button>
+            {/* Action buttons */}
+            <div className="flex gap-2 w-full lg:w-auto lg:ml-auto">
+              {selectedProducts.length > 0 && (
+                <Button
+                  className="flex-1 lg:flex-none bg-[#121212] hover:bg-black text-white flex gap-2 items-center rounded-lg h-10 px-6 shadow-md"
+                  onClick={() => setIsPreviewOpen(true)}
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Review Quotation</span>
+                </Button>
+              )}
+              <Button
+                className="flex-1 lg:flex-none rounded-lg h-10 px-6 border-2"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                <XCircle className="w-4 h-4 mr-1" /> Close
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2446,7 +2899,7 @@ ${spec.value}
                         ))}
 
                         {/* SUMMARY BAR */}
-                        <tr className="border-t-2 border-black bg-gray-200 text-gray-900 h-[45px]">
+                        {/* <tr className="border-t-2 border-black bg-gray-200 text-gray-900 h-[45px]">
                           <td colSpan={2} className="border-r border-gray-400"></td>
 
                           <td className="px-4 border-r border-gray-400 font-bold text-red-600 italic text-[14px] uppercase">
@@ -2476,9 +2929,9 @@ ${spec.value}
                           <td className="px-4 text-right font-black text-lg text-gray-900">
                             ₱{payload.deliveryFee}
                           </td>
-                        </tr>
+                        </tr> */}
 
-                        <tr className="border-t-2 border-black bg-gray-200 text-gray-900 h-[45px]">
+                        {/* <tr className="border-t-2 border-black bg-gray-200 text-gray-900 h-[45px]">
                           <td colSpan={4} className="border-r border-gray-400"></td>
 
                           <td className="px-4 text-right border-r border-gray-400 font-bold text-[10px] uppercase text-gray-700">
@@ -2487,6 +2940,162 @@ ${spec.value}
 
                           <td className="px-4 text-right font-black text-lg text-green-700">
                             ₱{payload.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr> */}
+
+                        {/* <tr className="border-t-2 border-black bg-gray-200 text-gray-900 h-[45px]">
+                          <td colSpan={4} className="border-r border-gray-400"></td>
+                          <td colSpan={2}>
+                            <tr>
+                              <td className="px-4 text-right border-r border-gray-400 font-bold text-[10px] uppercase text-gray-700">
+                                Grand Total:
+                              </td>
+                              <td className="px-4 text-right font-black text-lg text-green-700">
+                                ₱{payload.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="px-4 text-right border-r border-gray-400 font-bold text-[10px] uppercase text-gray-700">
+                                Grand Total:
+                              </td>
+                              <td className="px-4 text-right font-black text-lg text-green-700">
+                                ₱{payload.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          </td>
+                       
+
+                        </tr> */}
+
+                        {/* --- DETAILED SUMMARY BREAKDOWN --- */}
+                        <tr className="border-t-2 border-black bg-white text-gray-900">
+                          <td colSpan={4} className="border-r-2 border-black p-4 align-top">
+                            <div className="flex flex-col gap-4 h-full pt-2">
+                              <div className="flex items-center gap-6">
+                                <span className="font-bold text-red-600 italic text-[14px] uppercase whitespace-nowrap tracking-tighter">
+                                  Tax Type:
+                                </span>
+                                <div className="flex gap-4 text-[11px] font-black uppercase tracking-tight">
+                                  <span className={payload.vatTypeLabel === "VAT Inc" ? "text-gray-900" : "text-gray-400"}>
+                                    {payload.vatTypeLabel === "VAT Inc" ? "●" : "○"} VAT Inc
+                                  </span>
+                                  <span className={payload.vatTypeLabel === "VAT Exe" ? "text-gray-900" : "text-gray-400"}>
+                                    {payload.vatTypeLabel === "VAT Exe" ? "●" : "○"} VAT Exe
+                                  </span>
+                                  <span className={payload.vatTypeLabel === "Zero-Rated" ? "text-gray-900" : "text-gray-400"}>
+                                    {payload.vatTypeLabel === "Zero-Rated" ? "●" : "○"} Zero-Rated
+                                  </span>
+                                </div>
+                              </div>
+
+                              {payload.whtType !== "none" && (
+                                <div className="flex items-center gap-6 border-t border-gray-100 pt-2">
+                                  <span className="font-bold text-blue-600 italic text-[12px] uppercase whitespace-nowrap tracking-tighter">
+                                    Withholding:
+                                  </span>
+                                  <span className="text-[10px] font-black uppercase text-blue-800">
+                                    ● {payload.whtLabel} (Applied to Net of VAT)
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          <td colSpan={2} className="p-0">
+                            <table className="w-full border-collapse">
+                              <tbody className="text-[10px]">
+                                {/* Row 1: Net Sales */}
+                                <tr className="border-b border-gray-100">
+                                  <td className="px-3 py-1.5 text-right font-bold uppercase border-r-2 border-black w-[55%] text-[9px] text-gray-500">
+                                    Net Sales {payload.vatTypeLabel === "VAT Inc" ? "(VAT Inclusive)" : "(Non-VAT)"}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right font-black text-gray-900">
+                                    ₱{(payload.totalPrice - payload.deliveryFee).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+
+                                {/* Row 2: Delivery */}
+                                <tr className="border-b border-gray-100">
+                                  <td className="px-3 py-1.5 text-right font-bold uppercase border-r-2 border-black text-[9px] text-gray-500">
+                                    Delivery Charge
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right font-black text-gray-900">
+                                    ₱{Number(payload.deliveryFee).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+
+                                {/* Row 3: Restocking Fee (RESTORED) */}
+                                <tr className="border-b-2 border-black">
+                                  <td className="px-3 py-1.5 text-right font-bold uppercase border-r-2 border-black text-[9px] text-gray-500">
+                                    Restocking Fee
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right font-black text-gray-900">
+                                    ₱{(restockingFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+
+                                {/* Row 4: Total Invoice Amount */}
+                                <tr className="bg-gray-50 border-b border-black">
+                                  <td className="px-3 py-2 text-right font-black uppercase border-r-2 border-black text-[10px]">
+                                    Total Invoice Amount
+                                  </td>
+                                  <td className="px-3 py-2 text-right font-black text-[13px] text-blue-900">
+                                    ₱{payload.totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+
+                                {/* VAT & WHT Logic */}
+                                {payload.vatTypeLabel === "VAT Inc" ? (
+                                  <>
+                                    <tr className="border-b border-gray-100">
+                                      <td className="px-3 py-1.5 text-right font-bold uppercase border-r-2 border-black text-gray-400 text-[8px]">
+                                        Less: VAT (12%)
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right font-bold text-gray-400">
+                                        ₱{(payload.totalPrice * (12 / 112)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      </td>
+                                    </tr>
+                                    <tr className={payload.whtType !== "none" ? "border-b border-gray-100" : "border-b-2 border-black"}>
+                                      <td className="px-3 py-1.5 text-right font-bold uppercase border-r-2 border-black text-gray-400 text-[8px]">
+                                        Net of VAT (Tax Base)
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right font-bold text-gray-400">
+                                        ₱{(payload.totalPrice / 1.12).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      </td>
+                                    </tr>
+                                    {payload.whtType !== "none" && (
+                                      <tr className="border-b-2 border-black bg-blue-50/50">
+                                        <td className="px-3 py-2 text-right font-black uppercase border-r-2 border-black text-blue-700 text-[8px]">
+                                          LESS: {payload.whtLabel}
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-black text-blue-700">
+                                          - ₱{payload.whtAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </>
+                                ) : (
+                                  <tr className="border-b-2 border-black">
+                                    <td className="px-3 py-1.5 text-right font-bold uppercase border-r-2 border-black text-gray-400 text-[8px]">
+                                      Tax Status
+                                    </td>
+                                    <td className="px-3 py-1.5 text-right font-bold text-gray-400 italic">
+                                      {payload.vatTypeLabel === "VAT Exe" ? "Exempted" : "Zero-Rated"}
+                                    </td>
+                                  </tr>
+                                )}
+
+                                {/* Final Total */}
+                                <tr className="bg-black text-white">
+                                  <td className="px-3 py-3 text-right font-black uppercase border-r border-white/20 text-[10px] tracking-tight">
+                                    {payload.whtType !== "none" ? "Net Amount to Collect" : "Total Amount Due"}
+                                  </td>
+                                  <td className="px-3 py-3 text-right font-black text-[16px]">
+                                    ₱{payload.netAmountToCollect.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
                           </td>
                         </tr>
                       </tbody>
