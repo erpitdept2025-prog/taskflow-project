@@ -32,8 +32,6 @@ interface Props {
   setSource: (v: string) => void;
   productCat: string; // JSON string of selected products with qty and price
   setProductCat: (v: string) => void;
-  productUnit: string;
-  setProductUnit: (v: string) => void;
   productQuantity: string;
   setProductQuantity: (v: string) => void;
   productAmount: string;
@@ -46,6 +44,8 @@ interface Props {
   setProductSku: (v: string) => void;
   productTitle: string; // comma separated titles
   setProductTitle: (v: string) => void;
+  productUnit: string;
+  setProductUnit: (v: string) => void;
   projectType: string;
   setProjectType: (v: string) => void;
   projectName: string;
@@ -418,7 +418,7 @@ export function QuotationSheet(props: Props) {
     setProductCat(ids.join(","));
     setProductQuantity(quantities.join(","));
     setProductAmount(amounts.join(","));
-    setProductDescription(descriptions.join(" || "));
+    setProductDescription(descriptions.join(" || ")); // <-- buong description
     setProductPhoto(photos.join(","));
     setProductSku(skus.join(","));
     setProductTitle(titles.join(","));
@@ -524,7 +524,16 @@ export function QuotationSheet(props: Props) {
       const salesmanagername = managername ?? "";
 
       // --- ITEMS ---
-      const items = selectedProducts.map((p, index) => {
+      const items: Array<{
+        itemNo: number;
+        qty: number;
+        unit: string;
+        isLineItem: boolean;
+        referencePhoto: string;
+        description: string;
+        unitPrice: string;
+        totalAmount: string;
+      }> = selectedProducts.map((p, index) => {
         const qty = p.quantity ?? 0;
         const unitPrice = p.price ?? 0;
         const isDiscounted = p.isDiscounted ?? false;
@@ -551,6 +560,8 @@ export function QuotationSheet(props: Props) {
         return {
           itemNo: index + 1,
           qty,
+          unit: p.unit || "pcs",
+          isLineItem: p.isLineItem ?? false,
           referencePhoto: photo,
           description: descriptionTable,
           unitPrice: formatCurrency(unitPrice),
@@ -675,7 +686,20 @@ export function QuotationSheet(props: Props) {
 
     const salesemail = emailUsername && emailDomain ? `${emailUsername}@${emailDomain}` : "";
 
-    const items = selectedProducts.map((p, index) => {
+    const items: Array<{
+      itemNo: number;
+      qty: number;
+      unit: string;
+      isLineItem: boolean;
+      photo: string;
+      title: string;
+      sku: string;
+      description: string;
+      itemRemarks: string;
+      unitPrice: number;
+      discount: number;
+      totalAmount: number;
+    }> = selectedProducts.map((p, index) => {
       const qty = p.quantity ?? 0;
       const unitPrice = p.price ?? 0;
       const isDiscounted = p.isDiscounted ?? false;
@@ -2861,6 +2885,7 @@ ${spec.value}
                         <tr className="bg-[#F9FAFA] border-b border-black font-black font-black uppercase text-[#121212]">
                           <th className="p-3 border-r border-black w-16 text-center">ITEM NO</th>
                           <th className="p-3 border-r border-black w-16 text-center">QTY</th>
+                          <th className="p-3 border-r border-black w-16 text-center">UNIT</th>
                           <th className="p-3 border-r border-black w-32 text-center">REFERENCE PHOTO</th>
                           <th className="p-3 border-r border-black text-left">PRODUCT DESCRIPTION</th>
                           <th className="p-3 border-r border-black w-32 text-right">UNIT PRICE</th>
@@ -2872,21 +2897,31 @@ ${spec.value}
                           <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
                             <td className="p-4 text-center border-r border-black align-top font-bold text-gray-400 capitalize"><span className="font-bold text-black">{item.itemNo}.</span></td>
                             <td className="p-4 text-center border-r border-black align-top font-black text-[#121212]">{item.qty}</td>
+                            <td className="p-4 text-center border-r border-black align-top text-[10px] font-bold text-gray-500">{item.unit || "pcs"}</td>
                             <td className="p-3 border-r border-black align-top bg-white">
-                              {item.photo ? (
+                              {item.isLineItem ? (
+                                <div className="w-24 h-24" />
+                              ) : item.photo ? (
                                 <img src={item.photo} className="w-24 h-24 object-contain mx-auto mix-blend-multiply" alt="sku-ref" />
                               ) : (
                                 <div className="w-24 h-24 bg-gray-50 flex items-center justify-center text-[8px] text-gray-300 italic">No Image</div>
                               )}
                             </td>
                             <td className="p-4 border-r border-black align-top">
+                              {item.isLineItem && (
+                                <span className="text-[8px] font-black uppercase text-orange-500 bg-orange-50 border border-orange-200 px-1 py-0.5 rounded mr-1">LINE</span>
+                              )}
                               <p className="font-black text-[#121212] text-xs uppercase mb-1">{item.title}</p>
-                              <p className="text-[9px] text-blue-600 font-bold mb-3 tracking-tighter">{item.sku}</p>
+                              {!item.isLineItem && (
+                                <p className="text-[9px] text-blue-600 font-bold mb-3 tracking-tighter">{item.sku}</p>
+                              )}
                               <div
                                 className="text-[10px] text-gray-500 leading-relaxed prose-sm max-w-none"
                                 dangerouslySetInnerHTML={{ __html: item.description }}
                               />
-                              <span className="bg-orange-400 mt-2 p-1 capitalize text-red-800">{item.itemRemarks}</span>
+                              {item.itemRemarks && (
+                                <span className="bg-orange-400 mt-2 p-1 capitalize text-red-800">{item.itemRemarks}</span>
+                              )}
                             </td>
                             <td className="p-4 text-right border-r border-black align-top font-medium">
                               ₱{item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -2969,7 +3004,7 @@ ${spec.value}
 
                         {/* --- DETAILED SUMMARY BREAKDOWN --- */}
                         <tr className="border-t-2 border-black bg-white text-gray-900">
-                          <td colSpan={4} className="border-r-2 border-black p-4 align-top">
+                          <td colSpan={5} className="border-r-2 border-black p-4 align-top">
                             <div className="flex flex-col gap-4 h-full pt-2">
                               <div className="flex items-center gap-6">
                                 <span className="font-bold text-red-600 italic text-[14px] uppercase whitespace-nowrap tracking-tighter">
