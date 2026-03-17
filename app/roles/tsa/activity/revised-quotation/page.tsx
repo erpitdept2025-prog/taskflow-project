@@ -186,12 +186,12 @@ function DashboardContent() {
                         </div>
 
                         {/* Create Button for Desktop */}
-                        <button
+                        {/* <button
                             className="hidden md:inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                             onClick={() => alert('Create clicked')}
                         >
                             Create
-                        </button>
+                        </button> */}
 
                         {/* FAB for Mobile */}
                         <button
