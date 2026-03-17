@@ -151,8 +151,8 @@ export const Scheduled: React.FC<ScheduledProps> = ({
     const url = new URL("/api/activity/tsa/planner/fetch", window.location.origin);
     url.searchParams.append("referenceid", referenceid);
     if (from && to) {
-      url.searchParams.append("from", from);
-      url.searchParams.append("to", to);
+       url.searchParams.append("from", from);
+       url.searchParams.append("to", to);
     }
 
     fetch(url.toString())

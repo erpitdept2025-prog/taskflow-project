@@ -250,11 +250,11 @@ function DashboardContent() {
 
               <AccountCard referenceid={userDetails.referenceid} />
 
-              <OutboundTouchbaseCard
+              {/* <OutboundTouchbaseCard
                 activities={filteredActivities}
                 loading={loadingActivities}
                 error={errorActivities}
-              />
+              /> */}
 
               <TimemotionCard
                 activities={filteredActivities}
@@ -274,24 +274,24 @@ function DashboardContent() {
             {/* New: Two large cards side by side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Large Card 1 */}
-              <SourceCard
+              {/* <SourceCard
                 activities={filteredActivities}
                 loading={loadingActivities}
                 error={errorActivities}
-              />
+              /> */}
 
-              <CSRMetricsCard
+              {/* <CSRMetricsCard
                 dateRange={dateCreatedFilterRange}
-              />
+              /> */}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <OutboundCard
+              {/* <OutboundCard
                 activities={filteredActivities}
                 loading={loadingActivities}
                 error={errorActivities}
                 dateRange={dateCreatedFilterRange}
-              />
+              /> */}
 
               <QuotationCard
                 activities={filteredActivities}
@@ -300,12 +300,12 @@ function DashboardContent() {
                 dateRange={dateCreatedFilterRange}
               />
 
-              <SOCard
+              {/* <SOCard
                 activities={filteredActivities}
                 loading={loadingActivities}
                 error={errorActivities}
                 dateRange={dateCreatedFilterRange}
-              />
+              /> */}
 
               <SiteVisitCard
                 referenceid={userDetails.referenceid}

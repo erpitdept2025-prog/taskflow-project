@@ -600,12 +600,12 @@ export function AgentList({
                             );
                         })()}
 
-                        <OutboundCallsTableCard
+                        {/* <OutboundCallsTableCard
                             history={filteredHistory}
                             agents={agents}
                             dateCreatedFilterRange={dateCreatedFilterRange}
                             setDateCreatedFilterRangeAction={setDateCreatedFilterRangeAction}
-                        />
+                        /> */}
 
                         <QuotationTableCard
                             history={filteredHistory}
@@ -622,14 +622,14 @@ export function AgentList({
                         />
 
                         {/* OTHER CARDS */}
-                        <OutboundCard
+                        {/* <OutboundCard
                             history={filteredHistory}
                             agents={agents}
-                        />
-                        <InboundRepliesCard
+                        /> */}
+                        {/* <InboundRepliesCard
                             history={filteredHistory}
                             agents={agents}
-                        />
+                        /> */}
                     </div>
                 </>
             )}

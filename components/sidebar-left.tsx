@@ -99,7 +99,7 @@
         icon: Briefcase,
         pages: [
           { name: "Activity Planner", url: "/roles/tsa/activity/planner", icon: Target },
-          { name: "Engr. Services", url: "/roles/tsa/activity/engineering", icon: Briefcase },
+          // { name: "Engr. Services", url: "/roles/tsa/activity/engineering", icon: Briefcase },
           { name: "Historical Data (TaskList)", url: "/roles/tsa/activity/tasklist", icon: ClipboardList },
           { name: "Quotations", url: "/roles/tsa/activity/revised-quotation", icon: Compass },
           { name: "Daily Admin Task", url: "/roles/tsa/activity/notes", icon: FileText },
@@ -127,31 +127,31 @@
         icon: BarChart2,
         pages: [
           { name: "Quotation Summary", url: "/roles/tsa/reports/quotation", icon: FileText },
-          { name: "Sales Order Summary", url: "/roles/tsa/reports/so", icon: ShoppingCart },
-          { name: "Pending Sales Order", url: "/roles/tsa/reports/pending", icon: XCircle },
-          { name: "Sales Invoice Summary", url: "/roles/tsa/reports/si", icon: File },
-          { name: "CSR Inquiry Summary", url: "/roles/tsa/reports/csr", icon: Phone },
-          { name: "SPF Summary", url: "/roles/tsa/reports/spf", icon: ClipboardPenLine },
+          // { name: "Sales Order Summary", url: "/roles/tsa/reports/so", icon: ShoppingCart },
+          // { name: "Pending Sales Order", url: "/roles/tsa/reports/pending", icon: XCircle },
+          // { name: "Sales Invoice Summary", url: "/roles/tsa/reports/si", icon: File },
+          // { name: "CSR Inquiry Summary", url: "/roles/tsa/reports/csr", icon: Phone },
+          // { name: "SPF Summary", url: "/roles/tsa/reports/spf", icon: ClipboardPenLine },
           { name: "New Client Summary", url: "/roles/tsa/reports/ncs", icon: Leaf },
-          { name: "FB Marketplace Summary", url: "/roles/tsa/reports/fb", icon: ShoppingBag },
+          // { name: "FB Marketplace Summary", url: "/roles/tsa/reports/fb", icon: ShoppingBag },
 
           // TSM
           { name: "Quotation", url: "/roles/tsm/reports/quotation", icon: FileText },
-          { name: "Sales Order", url: "/roles/tsm/reports/so", icon: ShoppingCart },
-          { name: "Sales Invoice", url: "/roles/tsm/reports/si", icon: File },
-          { name: "CSR Endorsement", url: "/roles/tsm/reports/csr", icon: Phone },
-          { name: "SPF", url: "/roles/tsm/reports/spf", icon: ClipboardPenLine },
+          // { name: "Sales Order", url: "/roles/tsm/reports/so", icon: ShoppingCart },
+          // { name: "Sales Invoice", url: "/roles/tsm/reports/si", icon: File },
+          // { name: "CSR Endorsement", url: "/roles/tsm/reports/csr", icon: Phone },
+          // { name: "SPF", url: "/roles/tsm/reports/spf", icon: ClipboardPenLine },
           { name: "New Client", url: "/roles/tsm/reports/ncs", icon: Leaf },
-          { name: "FB Marketplace", url: "/roles/tsm/reports/fb", icon: ShoppingBag },
+          // { name: "FB Marketplace", url: "/roles/tsm/reports/fb", icon: ShoppingBag },
 
           // Manager
           { name: "Quotation Summary", url: "/roles/manager/reports/quotation", icon: FileText },
-          { name: "SO Summary", url: "/roles/manager/reports/so", icon: ShoppingCart },
-          { name: "Sales Invoice Summary", url: "/roles/manager/reports/si", icon: File },
-          { name: "CSR Inquiry Summary", url: "/roles/manager/reports/csr", icon: Phone },
-          { name: "SPF Summary", url: "/roles/manager/reports/spf", icon: ClipboardPenLine },
+          // { name: "SO Summary", url: "/roles/manager/reports/so", icon: ShoppingCart },
+          // { name: "Sales Invoice Summary", url: "/roles/manager/reports/si", icon: File },
+          // { name: "CSR Inquiry Summary", url: "/roles/manager/reports/csr", icon: Phone },
+          // { name: "SPF Summary", url: "/roles/manager/reports/spf", icon: ClipboardPenLine },
           { name: "New Client Summary", url: "/roles/manager/reports/ncs", icon: Leaf },
-          { name: "FB Marketplace", url: "/roles/manager/reports/fb", icon: ShoppingBag },
+          // { name: "FB Marketplace", url: "/roles/manager/reports/fb", icon: ShoppingBag },
 
           // Admin
           { name: "Quotation Summary", url: "/roles/admin/reports/quotation", icon: FileText },
@@ -163,34 +163,34 @@
           { name: "FB Marketplace Summary", url: "/roles/admin/reports/fb", icon: ShoppingBag },
         ],
       },
-      {
-        name: "Conversion Rates",
-        icon: TrendingUp,
-        pages: [
-          { name: "Calls to Quote", url: "/roles/tsa/conversion/calls-to-quote", icon: PhoneCall },
-          { name: "Quote To SO", url: "/roles/tsa/conversion/quote-to-so", icon: FileText },
-          { name: "SO To SI", url: "/roles/tsa/conversion/so-to-si", icon: CreditCard },
-          { name: "Calls to SI", url: "/roles/tsa/conversion/calls-to-si", icon: Rocket },
+      // {
+      //   name: "Conversion Rates",
+      //   icon: TrendingUp,
+      //   pages: [
+      //     { name: "Calls to Quote", url: "/roles/tsa/conversion/calls-to-quote", icon: PhoneCall },
+      //     { name: "Quote To SO", url: "/roles/tsa/conversion/quote-to-so", icon: FileText },
+      //     { name: "SO To SI", url: "/roles/tsa/conversion/so-to-si", icon: CreditCard },
+      //     { name: "Calls to SI", url: "/roles/tsa/conversion/calls-to-si", icon: Rocket },
 
-          // TSM
-          { name: "Call to Quotes", url: "/roles/tsm/conversion/calls-to-quote", icon: PhoneCall },
-          { name: "Quotes To SO", url: "/roles/tsm/conversion/quote-to-so", icon: FileText },
-          { name: "SO's To SI", url: "/roles/tsm/conversion/so-to-si", icon: CreditCard },
-          { name: "Call to SI", url: "/roles/tsm/conversion/calls-to-si", icon: Rocket },
+      //     // TSM
+      //     { name: "Call to Quotes", url: "/roles/tsm/conversion/calls-to-quote", icon: PhoneCall },
+      //     { name: "Quotes To SO", url: "/roles/tsm/conversion/quote-to-so", icon: FileText },
+      //     { name: "SO's To SI", url: "/roles/tsm/conversion/so-to-si", icon: CreditCard },
+      //     { name: "Call to SI", url: "/roles/tsm/conversion/calls-to-si", icon: Rocket },
 
-          // Manager
-          { name: "Calls to Quote", url: "/roles/manager/conversion/calls-to-quote", icon: PhoneCall },
-          { name: "Quote To SO", url: "/roles/manager/conversion/quote-to-so", icon: FileText },
-          { name: "SO To SI", url: "/roles/manager/conversion/so-to-si", icon: CreditCard },
-          { name: "Calls to SI", url: "/roles/manager/conversion/calls-to-si", icon: Rocket },
+      //     // Manager
+      //     { name: "Calls to Quote", url: "/roles/manager/conversion/calls-to-quote", icon: PhoneCall },
+      //     { name: "Quote To SO", url: "/roles/manager/conversion/quote-to-so", icon: FileText },
+      //     { name: "SO To SI", url: "/roles/manager/conversion/so-to-si", icon: CreditCard },
+      //     { name: "Calls to SI", url: "/roles/manager/conversion/calls-to-si", icon: Rocket },
 
-          // Admin
-          { name: "Calls to Quote", url: "/roles/admin/conversion/calls-to-quote", icon: PhoneCall },
-          { name: "Quote To SO", url: "/roles/admin/conversion/quote-to-so", icon: FileText },
-          { name: "SO To SI", url: "/roles/admin/conversion/so-to-si", icon: CreditCard },
-          { name: "Calls to SI", url: "/roles/admin/conversion/calls-to-si", icon: Rocket },
-        ],
-      },
+      //     // Admin
+      //     { name: "Calls to Quote", url: "/roles/admin/conversion/calls-to-quote", icon: PhoneCall },
+      //     { name: "Quote To SO", url: "/roles/admin/conversion/quote-to-so", icon: FileText },
+      //     { name: "SO To SI", url: "/roles/admin/conversion/so-to-si", icon: CreditCard },
+      //     { name: "Calls to SI", url: "/roles/admin/conversion/calls-to-si", icon: Rocket },
+      //   ],
+      // },
     ],
   };
 

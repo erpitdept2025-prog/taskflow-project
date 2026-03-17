@@ -93,10 +93,7 @@ function DashboardContent() {
     const [loadingUser, setLoadingUser] = useState(true);
     const [loadingAccounts, setLoadingAccounts] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [dateCreatedFilterRange, setDateCreatedFilterRangeAction] = React.useState<
-        DateRange | undefined
-    >(undefined);
-
+    const [dateCreatedFilterRange, setDateCreatedFilterRangeAction] = React.useState<DateRange | undefined>(undefined);
     // NEW: State to toggle completed card visibility
     const [collapseState, setCollapseState] = useState({
         inProgress: true,

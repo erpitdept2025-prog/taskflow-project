@@ -112,15 +112,15 @@ interface Props {
 }
 
 const Quotation_SOURCES = [
-  { label: "Existing Client", description: "Clients with active accounts or previous transactions.", },
-  { label: "CSR Endorsement", description: "Customer Service Representative inquiries.", },
-  { label: "Government", description: "Calls coming from government agencies.", },
-  { label: "Philgeps Website", description: "Inquiries from Philgeps online platform.", },
-  { label: "Philgeps", description: "Other Philgeps related contacts.", },
-  { label: "Distributor", description: "Calls from product distributors or resellers.", },
-  { label: "Modern Trade", description: "Contacts from retail or modern trade partners.", },
-  { label: "Facebook Marketplace", description: "Leads or inquiries from Facebook Marketplace.", },
-  { label: "Walk-in Showroom", description: "Visitors physically coming to showroom.", },
+  { label: "Existing Client Project", description: "Clients with active accounts or previous transactions.", },
+  // { label: "CSR Endorsement", description: "Customer Service Representative inquiries.", },
+  // { label: "Government", description: "Calls coming from government agencies.", },
+  // { label: "Philgeps Website", description: "Inquiries from Philgeps online platform.", },
+  // { label: "Philgeps", description: "Other Philgeps related contacts.", },
+  // { label: "Distributor", description: "Calls from product distributors or resellers.", },
+  // { label: "Modern Trade", description: "Contacts from retail or modern trade partners.", },
+  // { label: "Facebook Marketplace", description: "Leads or inquiries from Facebook Marketplace.", },
+  // { label: "Walk-in Showroom", description: "Visitors physically coming to showroom.", },
 ];
 
 interface Product {
@@ -1392,11 +1392,11 @@ export function QuotationSheet(props: Props) {
                 className="space-y-4"
               >
                 {[
-                  {
-                    label: "Ecoshift Corporation",
-                    description:
-                      "The Fastest-Growing Provider of Innovative Lighting Solutions",
-                  },
+                  // {
+                  //   label: "Ecoshift Corporation",
+                  //   description:
+                  //     "The Fastest-Growing Provider of Innovative Lighting Solutions",
+                  // },
                   {
                     label: "Disruptive Solutions Inc",
                     description:
